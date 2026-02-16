@@ -5,7 +5,7 @@ import retrofit2.http.GET
 import retrofit2.http.Path
 
 interface PokemonApi {
-    @GET("/pokemon/{id}")
+    @GET("/api/v1/pokemon/{id}")
     suspend fun getPokemon(
         @Path("id") id: Int
     ): TyradexPokemonResponse

@@ -1,103 +1,101 @@
 package com.example.myapplication.leaderboard
 
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
-import retrofit2.http.Body
-import retrofit2.http.GET
-import retrofit2.http.POST
-import retrofit2.http.Query
+import android.content.Context
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import java.io.File
 
-// -----------------------------
-// DTO
-// -----------------------------
 data class ScoreDto(
     val id: Int? = null,
     val username: String,
     val score: Int
 )
 
-// -----------------------------
-// API interface
-// -----------------------------
-interface LeaderboardApi {
-
-    @POST("score")
-    suspend fun pushScore(@Body score: ScoreDto)
-
-    @GET("leaderboard")
-    suspend fun getLeaderboard(
-        @Query("offset") offset: Int,
-        @Query("limit") limit: Int
-    ): List<ScoreDto>
-}
-
-// -----------------------------
-// LeaderboardUtils
-// -----------------------------
 object LeaderboardUtils {
 
     private const val PAGE_SIZE = 10
-
-    private val api: LeaderboardApi by lazy {
-        Retrofit.Builder()
-            .baseUrl("http://10.0.2.2:8080/") // ton backend local
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-            .create(LeaderboardApi::class.java)
-    }
+    private const val FILE_NAME = "leaderboard_local.json"
 
     private var currentOffset = 0
     private val cache = mutableListOf<ScoreDto>()
+    private val allScores = mutableListOf<ScoreDto>()
 
-    // Push un score avec pseudo
-    suspend fun pushScore(username: String, score: Int): Result<Unit> {
+    private lateinit var file: File
+    private val gson = Gson()
+
+    // Initialisation
+    fun init(context: Context) {
+
+        file = File(context.filesDir, FILE_NAME)
+
+        // Si le fichier n'existe pas encore → copier depuis assets
+        if (!file.exists()) {
+            val json = context.assets.open("leaderboard.json")
+                .bufferedReader()
+                .use { it.readText() }
+
+            file.writeText(json)
+        }
+
+        loadFromFile()
+    }
+
+    private fun loadFromFile() {
+        val json = file.readText()
+        val type = object : TypeToken<List<ScoreDto>>() {}.type
+        val list: List<ScoreDto> = gson.fromJson(json, type)
+
+        allScores.clear()
+        allScores.addAll(list.sortedByDescending { it.score })
+    }
+
+    private fun saveToFile() {
+        file.writeText(gson.toJson(allScores))
+    }
+
+    fun pushScore(username: String, score: Int): Result<Unit> {
         return try {
-            api.pushScore(ScoreDto(username = username, score = score))
+            val newId = (allScores.maxOfOrNull { it.id ?: 0 } ?: 0) + 1
+            val newScore = ScoreDto(newId, username, score)
+
+            allScores.add(newScore)
+            allScores.sortByDescending { it.score }
+
+            saveToFile() // 🔥 sauvegarde persistante
+
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    // Reset pagination
     fun resetPagination() {
         currentOffset = 0
         cache.clear()
     }
 
-    // Charger top 10
-    suspend fun loadFirstPage(): Result<List<ScoreDto>> {
+    fun loadFirstPage(): Result<List<ScoreDto>> {
         return try {
             resetPagination()
-            val data = api.getLeaderboard(
-                offset = currentOffset,
-                limit = PAGE_SIZE
-            )
+            val data = allScores.take(PAGE_SIZE)
             cache.addAll(data)
-            currentOffset += data.size
+            currentOffset = data.size
             Result.success(cache.toList())
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    // Charger 10 de plus
-    suspend fun loadMore(): Result<List<ScoreDto>> {
+    fun loadMore(): Result<List<ScoreDto>> {
         return try {
-            val data = api.getLeaderboard(
-                offset = currentOffset,
-                limit = PAGE_SIZE
-            )
-            if (data.isNotEmpty()) {
-                cache.addAll(data)
-                currentOffset += data.size
-            }
+            val next = allScores.drop(currentOffset).take(PAGE_SIZE)
+            cache.addAll(next)
+            currentOffset += next.size
             Result.success(cache.toList())
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    // Récupérer le cache actuel
     fun getCached(): List<ScoreDto> = cache.toList()
 }

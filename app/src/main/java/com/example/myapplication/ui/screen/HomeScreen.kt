@@ -25,7 +25,7 @@ fun HomeScreen(navController: NavController) {
                 onGoToQuiz = {
                     navController.navigate(Screen.GenQuiz.route)
                 },
-                OnGoToLeaderboard = {
+                onGoToLeaderboard = {
                     navController.navigate(Screen.Leaderboard.route)
                 }
             )

@@ -1,0 +1,13 @@
+[
+  { "id": 1, "username": "Alice", "score": 950 },
+  { "id": 2, "username": "Bob", "score": 870 },
+  { "id": 3, "username": "Charlie", "score": 820 },
+  { "id": 4, "username": "David", "score": 780 },
+  { "id": 5, "username": "Emma", "score": 760 },
+  { "id": 6, "username": "Lucas", "score": 730 },
+  { "id": 7, "username": "Lina", "score": 700 },
+  { "id": 8, "username": "Noah", "score": 680 },
+  { "id": 9, "username": "Mia", "score": 640 },
+  { "id": 10, "username": "Ethan", "score": 600 },
+  { "id": 11, "username": "Zoe", "score": 550 }
+]

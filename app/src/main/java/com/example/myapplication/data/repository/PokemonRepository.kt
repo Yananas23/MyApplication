@@ -14,7 +14,7 @@ object PokemonRepository {
 
     private val api: PokemonApi by lazy {
         Retrofit.Builder()
-            .baseUrl("https://tyradex.app/api/v1")
+            .baseUrl("https://tyradex.app")
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(PokemonApi::class.java)
@@ -25,35 +25,39 @@ object PokemonRepository {
     private val listCache = mutableMapOf<Pair<Int, Int>, List<Pokemon>>()
 
     // ---------- SINGLE ----------
-    suspend fun fetchPokemon(id: Int): Pokemon {
-
+    suspend fun fetchPokemon(id: Int): Pokemon? {
         // cache hit
         pokemonCache[id]?.let { return it }
 
-        val response = api.getPokemon(id)
+        return try {
+            val response = api.getPokemon(id)
 
-        val pokemon = Pokemon(
-            id = response.pokedex_id,
-            nameFr = response.name.fr,
-            nameEn = response.name.en,
-            nameJp = response.name.jp,
-            typeNames = response.types.map { it.name },
-            typeImages = response.types.map { it.image },
-            category = response.category,
-            sprite = response.sprites.regular,
-            shinySprite = response.sprites.shiny,
-            evolutionsPre = response.evolutions?.pre?.map { it.pokedex_id } ?: emptyList(),
-            evolutionsNext = response.evolutions?.next?.map { it.pokedex_id } ?: emptyList()
-        )
+            val pokemon = Pokemon(
+                id = response.pokedex_id,
+                nameFr = response.name.fr,
+                nameEn = response.name.en,
+                nameJp = response.name.jp,
+                typeNames = response.types.map { it.name },
+                typeImages = response.types.map { it.image },
+                category = response.category,
+                sprite = response.sprites.regular,
+                shinySprite = response.sprites.shiny,
+                evolutionsPre = response.evolutions?.pre?.map { it.pokedex_id } ?: emptyList(),
+                evolutionsNext = response.evolutions?.next?.map { it.pokedex_id } ?: emptyList()
+            )
 
-        pokemonCache[id] = pokemon
-        return pokemon
+            pokemonCache[id] = pokemon
+            pokemon
+        } catch (e: Exception) {
+            e.printStackTrace() // ou juste log
+            null // retourne null si impossible de récupérer le Pokémon
+        }
     }
 
     // ---------- LIST ----------
     suspend fun fetchAllPokemons(
         minId: Int = 1,
-        maxId: Int = 1
+        maxId: Int = 1025
     ): List<Pokemon> = coroutineScope {
 
         val key = minId to maxId
@@ -62,8 +66,8 @@ object PokemonRepository {
         listCache[key]?.let { return@coroutineScope it }
 
         val list = (minId..maxId).map { id ->
-            async { fetchPokemon(id) } // utilise déjà le cache single
-        }.awaitAll()
+            async { fetchPokemon(id) } // renverra null si échec
+        }.awaitAll().filterNotNull() // on filtre les null pour ne garder que les Pokémon valides
 
         listCache[key] = list
         list

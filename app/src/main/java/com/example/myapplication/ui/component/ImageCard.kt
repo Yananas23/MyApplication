@@ -20,7 +20,7 @@ import com.example.myapplication.ui.theme.LocalExtraColors
 fun ImageCard(
     onGoToPokemon: () -> Unit,
     onGoToQuiz: () -> Unit,
-    OnGoToLeaderboard: () -> Unit
+    onGoToLeaderboard: () -> Unit
 ) {
     val extra = LocalExtraColors.current
 
@@ -82,6 +82,9 @@ fun ImageCard(
                     }
                     Button(onClick = onGoToPokemon) {
                         Text("Apprendre les pokémons")
+                    }
+                    Button(onClick = onGoToLeaderboard) {
+                        Text("Leaderboard")
                     }
                 }
 
